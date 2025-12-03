@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { userAPI } from "../services/api";
 import Navbar from "../components/Navbar";
 
 const Settings = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading, updateUser } = useAuth();
+  const { darkMode, setDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -129,10 +131,10 @@ const Settings = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? "dark bg-gray-900" : "bg-gradient-to-br from-blue-50 to-indigo-100"}`}>
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className={`mt-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Loading...</p>
         </div>
       </div>
     );
@@ -142,18 +144,19 @@ const Settings = () => {
     { id: "profile", label: "Profile", icon: "👤" },
     { id: "password", label: "Password", icon: "🔒" },
     { id: "notifications", label: "Notifications", icon: "🔔" },
+    { id: "appearance", label: "Appearance", icon: "🎨" },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className={`min-h-screen ${darkMode ? "dark bg-gray-900" : "bg-gradient-to-br from-blue-50 to-indigo-100"}`}>
       <Navbar user={user} />
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className={`max-w-4xl mx-auto px-6 py-8 ${darkMode ? "bg-gray-900" : ""}`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">⚙️ Settings</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>⚙️ Settings</h1>
+            <p className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
               Configure your account preferences
             </p>
           </div>
@@ -183,16 +186,20 @@ const Settings = () => {
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className={`rounded-lg shadow-lg overflow-hidden ${darkMode ? "bg-gray-800" : "bg-white"}`}>
           {/* Tabs */}
-          <div className="flex border-b border-gray-200">
+          <div className={`flex border-b ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 px-6 py-4 text-center font-medium transition ${
                   activeTab === tab.id
-                    ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                    ? darkMode
+                      ? "text-blue-400 border-b-2 border-blue-400 bg-gray-700"
+                      : "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                    : darkMode
+                    ? "text-gray-400 hover:bg-gray-700"
                     : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
@@ -207,7 +214,7 @@ const Settings = () => {
             {/* Profile Tab */}
             {activeTab === "profile" && (
               <form onSubmit={handleProfileUpdate}>
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">
+                <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>
                   Profile Information
                 </h2>
 
@@ -218,10 +225,10 @@ const Settings = () => {
                     </span>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800">
+                    <h3 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                       {user?.name}
                     </h3>
-                    <p className="text-gray-600">{user?.email}</p>
+                    <p className={darkMode ? "text-gray-400" : "text-gray-600"}>{user?.email}</p>
                     <span
                       className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold ${
                         user?.isAccountVerified
@@ -238,7 +245,7 @@ const Settings = () => {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                       Full Name
                     </label>
                     <input
@@ -247,11 +254,15 @@ const Settings = () => {
                       onChange={(e) =>
                         setProfileForm({ ...profileForm, name: e.target.value })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        darkMode
+                          ? "bg-gray-900 border-gray-600 text-white placeholder-gray-400"
+                          : "border-gray-300 bg-white text-black"
+                      }`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                       Email Address
                     </label>
                     <input
@@ -263,10 +274,14 @@ const Settings = () => {
                           email: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        darkMode
+                          ? "bg-gray-900 border-gray-600 text-white placeholder-gray-400 disabled:bg-gray-800"
+                          : "border-gray-300 bg-white text-black"
+                      }`}
                       disabled
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
                       Email cannot be changed
                     </p>
                   </div>
@@ -285,13 +300,13 @@ const Settings = () => {
             {/* Password Tab */}
             {activeTab === "password" && (
               <form onSubmit={handlePasswordChange}>
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">
+                <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>
                   Change Password
                 </h2>
 
                 <div className="space-y-4 max-w-md">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                       Current Password
                     </label>
                     <input
@@ -303,12 +318,16 @@ const Settings = () => {
                           currentPassword: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        darkMode
+                          ? "bg-gray-900 border-gray-600 text-white placeholder-gray-400"
+                          : "border-gray-300 bg-white text-black"
+                      }`}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                       New Password
                     </label>
                     <input
@@ -320,13 +339,17 @@ const Settings = () => {
                           newPassword: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        darkMode
+                          ? "bg-gray-900 border-gray-600 text-white placeholder-gray-400"
+                          : "border-gray-300 bg-white text-black"
+                      }`}
                       required
                       minLength={6}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className={`block text-sm font-medium mb-2 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                       Confirm New Password
                     </label>
                     <input
@@ -338,7 +361,11 @@ const Settings = () => {
                           confirmPassword: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        darkMode
+                          ? "bg-gray-900 border-gray-600 text-white placeholder-gray-400"
+                          : "border-gray-300 bg-white text-black"
+                      }`}
                       required
                     />
                   </div>
@@ -357,7 +384,7 @@ const Settings = () => {
             {/* Notifications Tab */}
             {activeTab === "notifications" && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">
+                <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>
                   Notification Preferences
                 </h2>
 
@@ -386,13 +413,17 @@ const Settings = () => {
                   ].map((item) => (
                     <div
                       key={item.key}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                      className={`flex items-center justify-between p-4 border rounded-lg ${
+                        darkMode
+                          ? "border-gray-700 bg-gray-700"
+                          : "border-gray-200 bg-white"
+                      }`}
                     >
                       <div>
-                        <h3 className="font-medium text-gray-800">
+                        <h3 className={`font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
                           {item.label}
                         </h3>
-                        <p className="text-sm text-gray-600">{item.desc}</p>
+                        <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>{item.desc}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -406,7 +437,11 @@ const Settings = () => {
                           }
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:rounded-full after:h-5 after:w-5 after:transition-all ${
+                          darkMode
+                            ? "bg-gray-600 peer-focus:ring-blue-300 after:bg-gray-700 peer-checked:bg-blue-600"
+                            : "bg-gray-200 peer-focus:ring-4 peer-focus:ring-blue-300 after:bg-white after:border-gray-300 after:border peer-checked:bg-blue-600"
+                        }`}></div>
                       </label>
                     </div>
                   ))}
@@ -419,6 +454,53 @@ const Settings = () => {
                 >
                   {loading ? "Saving..." : "Save Preferences"}
                 </button>
+              </div>
+            )}
+
+            {/* Appearance Tab */}
+            {activeTab === "appearance" && (
+              <div>
+                <h2 className={`text-xl font-semibold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>
+                  Appearance Settings
+                </h2>
+
+                <div className={`flex items-center justify-between p-6 border rounded-lg ${
+                  darkMode
+                    ? "border-gray-700 bg-gray-700"
+                    : "border-gray-200 bg-white"
+                }`}>
+                  <div>
+                    <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
+                      🌙 Dark Mode
+                    </h3>
+                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                      Toggle between light and dark theme
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={darkMode}
+                      onChange={(e) => setDarkMode(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className={`w-14 h-8 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:rounded-full after:h-6 after:w-6 after:transition-all ${
+                      darkMode
+                        ? "bg-blue-600 after:bg-white"
+                        : "bg-gray-300 after:bg-white after:border-gray-300 after:border"
+                    }`}></div>
+                  </label>
+                </div>
+
+                <div className={`mt-6 p-4 rounded-lg ${
+                  darkMode
+                    ? "bg-blue-900 text-blue-100"
+                    : "bg-blue-50 text-blue-800"
+                }`}>
+                  <p className="text-sm">
+                    <strong>💡 Tip:</strong> Dark mode is easier on the eyes during night time. Your preference will be saved automatically.
+                  </p>
+                </div>
               </div>
             )}
           </div>

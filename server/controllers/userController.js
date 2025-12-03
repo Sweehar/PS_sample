@@ -27,9 +27,20 @@ export const getUserData = async (req, res) => {
   }
 };
 
-// Get all users
+// Get all users - Only accessible by admins
 export const getAllUsers = async (req, res) => {
   try {
+    const userId = req.userId;
+    const user = await userModel.findById(userId);
+
+    // Check if user is an admin
+    if (!user || user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only admins can view all users.",
+      });
+    }
+
     const users = await userModel
       .find({})
       .select(
@@ -134,10 +145,20 @@ export const updateNotifications = async (req, res) => {
   }
 };
 
-// Invite user (send invitation email)
+// Invite user (send invitation email) - Only accessible by admins
 export const inviteUser = async (req, res) => {
   try {
     const { email, role } = req.body;
+    const requestingUserId = req.userId;
+
+    // Check if requesting user is an admin
+    const requestingUser = await userModel.findById(requestingUserId);
+    if (!requestingUser || requestingUser.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only admins can invite users.",
+      });
+    }
 
     if (!email) {
       return res
@@ -186,12 +207,21 @@ export const inviteUser = async (req, res) => {
   }
 };
 
-// Update user role
+// Update user role - Only accessible by admins
 export const updateUserRole = async (req, res) => {
   try {
     const { userId } = req.params;
     const { role } = req.body;
     const requestingUserId = req.userId;
+
+    // Check if requesting user is an admin
+    const requestingUser = await userModel.findById(requestingUserId);
+    if (!requestingUser || requestingUser.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only admins can change user roles.",
+      });
+    }
 
     // Can't change own role
     if (userId === requestingUserId) {

@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { feedbackAPI } from "../services/api";
 import Navbar from "../components/Navbar";
 
 const Feedback = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { darkMode } = useTheme();
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackList, setFeedbackList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,34 +106,34 @@ const Feedback = () => {
 
   const getSentimentBadge = (sentiment) => {
     const badges = {
-      positive: "bg-green-100 text-green-800",
-      negative: "bg-red-100 text-red-800",
-      neutral: "bg-gray-100 text-gray-800",
+      positive: darkMode ? "bg-green-900 text-green-300" : "bg-green-100 text-green-800",
+      negative: darkMode ? "bg-red-900 text-red-300" : "bg-red-100 text-red-800",
+      neutral: darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-800",
     };
     return badges[sentiment] || badges.neutral;
   };
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? "dark bg-gray-900" : "bg-gradient-to-br from-blue-50 to-indigo-100"}`}>
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className={`mt-4 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className={`min-h-screen ${darkMode ? "dark bg-gray-900" : "bg-gradient-to-br from-blue-50 to-indigo-100"}`}>
       <Navbar user={user} />
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className={`max-w-7xl mx-auto px-6 py-8 ${darkMode ? "bg-gray-900" : ""}`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">💬 Feedback</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>💬 Feedback</h1>
+            <p className={`mt-1 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
               Submit and manage customer feedback with AI sentiment analysis
             </p>
           </div>
@@ -146,8 +148,8 @@ const Feedback = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Submit Feedback Form */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            <div className={`rounded-lg shadow-lg p-6 ${darkMode ? "bg-gray-800" : "bg-white"}`}>
+              <h2 className={`text-xl font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-800"}`}>
                 Submit New Feedback
               </h2>
 
@@ -156,10 +158,16 @@ const Feedback = () => {
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder="Enter customer feedback here... Our AI will analyze the sentiment."
-                  className="w-full h-40 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  className={`w-full h-40 p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
+                    darkMode
+                      ? "bg-gray-900 border-gray-600 text-white placeholder-gray-400"
+                      : "border-gray-300 bg-white text-black"
+                  }`}
                   maxLength={5000}
                 />
-                <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
+                <div className={`flex justify-between items-center mt-2 text-sm ${
+                  darkMode ? "text-gray-400" : "text-gray-500"
+                }`}>
                   <span>{feedbackText.length}/5000 characters</span>
                 </div>
 
@@ -324,13 +332,13 @@ const Feedback = () => {
 
           {/* Feedback History */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className={`rounded-lg shadow-lg p-6 ${darkMode ? "bg-gray-800" : "bg-white"}`}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">
+                <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                   Feedback History
                 </h2>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-500">
+                  <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                     {pagination.total} total
                   </span>
                   {feedbackList.length > 0 && (
@@ -349,7 +357,7 @@ const Feedback = () => {
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : feedbackList.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
+                <div className={`text-center py-12 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                   <p className="text-lg">No feedback submitted yet</p>
                   <p className="text-sm mt-2">
                     Submit your first feedback to see it here
@@ -361,7 +369,11 @@ const Feedback = () => {
                     {feedbackList.map((item, index) => (
                       <div
                         key={item.jobId || index}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
+                        className={`border rounded-lg p-4 hover:shadow-md transition ${
+                          darkMode
+                            ? "border-gray-600 bg-gray-800"
+                            : "border-gray-200"
+                        }`}
                       >
                         {/* Header with sentiment badge and emoji */}
                         <div className="flex items-start justify-between gap-4">
@@ -373,7 +385,7 @@ const Feedback = () => {
                                 ? "😞"
                                 : "😐"}
                             </span>
-                            <p className="text-gray-700">{item.text}</p>
+                            <p className={`${darkMode ? "text-gray-200" : "text-gray-700"}`}>{item.text}</p>
                           </div>
                           <div className="flex flex-col items-end gap-1">
                             <span
@@ -392,8 +404,8 @@ const Feedback = () => {
 
                         {/* All Sentiment Scores with bars */}
                         {item.allScores && item.allScores.length > 0 && (
-                          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-xs font-semibold text-gray-600 mb-2">
+                          <div className={`mt-3 p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                            <p className={`text-xs font-semibold mb-2 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
                               Sentiment Analysis:
                             </p>
                             <div className="space-y-1">
@@ -402,10 +414,10 @@ const Feedback = () => {
                                   key={idx}
                                   className="flex items-center gap-2"
                                 >
-                                  <span className="text-xs w-20 text-gray-600">
+                                  <span className={`text-xs w-20 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
                                     {score.label}:
                                   </span>
-                                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                  <div className={`flex-1 rounded-full h-2 ${darkMode ? "bg-gray-600" : "bg-gray-200"}`}>
                                     <div
                                       className={`h-2 rounded-full ${
                                         score.label
@@ -423,7 +435,7 @@ const Feedback = () => {
                                       style={{ width: `${score.score * 100}%` }}
                                     />
                                   </div>
-                                  <span className="text-xs w-12 text-right">
+                                  <span className={`text-xs w-12 text-right ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
                                     {score.percentage ||
                                       `${(score.score * 100).toFixed(1)}%`}
                                   </span>

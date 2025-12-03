@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import PrivateRoute from "./components/PrivateRoute";
+import AdminRoute from "./components/AdminRoute";
 
 // Pages
 import Home from "./pages/Home";
@@ -83,9 +84,9 @@ function App() {
           <Route
             path="/users"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <Users />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
           <Route
