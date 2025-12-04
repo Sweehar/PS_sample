@@ -5,8 +5,10 @@ import {
   getAllUsersAdmin,
   getAllFeedbackAdmin,
   deleteUser,
+  updateUserRoleAdmin,
   getSystemHealth,
   controlDockerMonitoring,
+  getUserRatings,
 } from "../controllers/adminController.js";
 
 const adminRouter = express.Router();
@@ -20,9 +22,13 @@ adminRouter.get("/stats", getAdminStats);
 // User management
 adminRouter.get("/users", getAllUsersAdmin);
 adminRouter.delete("/users/:userId", deleteUser);
+adminRouter.put("/users/:userId/role", updateUserRoleAdmin);
 
 // Feedback management
 adminRouter.get("/feedback", getAllFeedbackAdmin);
+
+// User ratings
+adminRouter.get("/user-ratings", getUserRatings);
 
 // System health
 adminRouter.get("/health", getSystemHealth);

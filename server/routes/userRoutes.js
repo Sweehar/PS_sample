@@ -8,6 +8,8 @@ import {
   inviteUser,
   updateUserRole,
   heartbeat,
+  submitRating,
+  getMyRating,
 } from "../controllers/userController.js";
 import userAuth from "../middleware/userAuth.js";
 
@@ -24,5 +26,9 @@ userRouter.put("/notifications", updateNotifications);
 userRouter.post("/invite", inviteUser);
 userRouter.post("/heartbeat", heartbeat);
 userRouter.put("/:userId/role", updateUserRole);
+
+// Rating routes
+userRouter.post("/rating", submitRating);
+userRouter.get("/rating", getMyRating);
 
 export default userRouter;

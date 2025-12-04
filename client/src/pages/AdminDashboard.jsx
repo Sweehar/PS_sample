@@ -3,6 +3,29 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { adminAPI } from "../services/api";
 
+// Animated Counter Component
+const AnimatedCounter = ({ end, duration = 1000 }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTime;
+    const animate = (currentTime) => {
+      if (!startTime) startTime = currentTime;
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      setCount(Math.floor(progress * end));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    if (end > 0) requestAnimationFrame(animate);
+  }, [end, duration]);
+
+  return <span>{count}</span>;
+};
+
+// Pulse Dot Component
+const PulseDot = ({ color = "green", size = "w-2 h-2" }) => (
+  <span className={`${size} rounded-full bg-${color}-500 animate-pulse`}></span>
+);
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated, loading: authLoading } = useAuth();
@@ -126,6 +149,21 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      const res = await adminAPI.updateUserRole(userId, newRole);
+      if (res.data.success) {
+        // Update local state
+        setUsers(
+          users.map((u) => (u._id === userId ? { ...u, role: newRole } : u))
+        );
+        fetchData(); // Refresh stats
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update role");
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate("/login");
@@ -138,83 +176,134 @@ const AdminDashboard = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-gray-300">Loading Admin Dashboard...</p>
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-gray-700 rounded-full"></div>
+            <div className="absolute top-0 left-0 w-20 h-20 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
+            <div
+              className="absolute top-2 left-2 w-16 h-16 border-4 border-purple-500 rounded-full animate-spin border-b-transparent"
+              style={{
+                animationDirection: "reverse",
+                animationDuration: "1.5s",
+              }}
+            ></div>
+          </div>
+          <p className="mt-6 text-gray-300 font-medium">
+            Loading Admin Dashboard...
+          </p>
+          <div className="flex items-center justify-center gap-1 mt-2">
+            <div
+              className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+              style={{ animationDelay: "0ms" }}
+            ></div>
+            <div
+              className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
+              style={{ animationDelay: "150ms" }}
+            ></div>
+            <div
+              className="w-2 h-2 bg-pink-500 rounded-full animate-bounce"
+              style={{ animationDelay: "300ms" }}
+            ></div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Admin Navbar */}
-      <nav className="bg-gray-800 border-b border-gray-700">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+      {/* Enhanced Admin Navbar */}
+      <nav className="bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="text-2xl font-bold text-blue-400">
-              🛡️ Admin Dashboard
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <span className="text-xl">🛡️</span>
+              </div>
+              <div>
+                <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  Admin Dashboard
+                </span>
+                <div className="flex items-center gap-1 text-xs text-gray-400">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  System Online
+                </div>
+              </div>
+            </div>
             {/* Quick Links */}
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2 ml-4">
               <button
                 onClick={() => setActiveTab("analytics")}
-                className="text-gray-400 hover:text-blue-400 transition flex items-center gap-1"
+                className={`px-3 py-2 rounded-lg transition flex items-center gap-2 ${
+                  activeTab === "analytics"
+                    ? "bg-purple-600/20 text-purple-400"
+                    : "text-gray-400 hover:bg-gray-700/50 hover:text-purple-400"
+                }`}
               >
                 📊 Analytics
               </button>
               <button
                 onClick={() => setActiveTab("monitoring")}
-                className="text-gray-400 hover:text-blue-400 transition flex items-center gap-1"
+                className={`px-3 py-2 rounded-lg transition flex items-center gap-2 ${
+                  activeTab === "monitoring"
+                    ? "bg-green-600/20 text-green-400"
+                    : "text-gray-400 hover:bg-gray-700/50 hover:text-green-400"
+                }`}
               >
                 📈 Monitoring
               </button>
               <Link
                 to="/dashboard"
-                className="text-gray-400 hover:text-blue-400 transition flex items-center gap-1"
+                className="px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-700/50 hover:text-blue-400 transition flex items-center gap-2"
               >
                 🏠 Main Dashboard
               </Link>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-gray-400">Welcome, {user?.name}</span>
+            <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-gray-700/50 rounded-xl">
+              <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+              <div className="text-sm">
+                <p className="font-medium text-white">{user?.name}</p>
+                <p className="text-xs text-gray-400">Administrator</p>
+              </div>
+            </div>
             <button
               onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+              className="bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-2 rounded-lg hover:from-red-700 hover:to-red-800 transition shadow-lg shadow-red-600/20 flex items-center gap-2"
             >
-              Logout
+              <span>🚪</span>
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
       </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Tabs */}
-        <div className="flex gap-2 mb-8 border-b border-gray-700 pb-4 overflow-x-auto">
+        {/* Enhanced Tabs */}
+        <div className="flex gap-2 mb-8 p-2 bg-gray-800/50 rounded-2xl overflow-x-auto backdrop-blur-sm">
           {[
-            "overview",
-            "analytics",
-            "users",
-            "feedback",
-            "monitoring",
-            "system",
+            { id: "overview", icon: "🏠", label: "Overview" },
+            { id: "analytics", icon: "📊", label: "Analytics" },
+            { id: "users", icon: "👥", label: "Users" },
+            { id: "feedback", icon: "💬", label: "Feedback" },
+            { id: "monitoring", icon: "📈", label: "Monitoring" },
+            { id: "system", icon: "⚙️", label: "System" },
           ].map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg font-medium capitalize transition whitespace-nowrap ${
-                activeTab === tab
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-3 rounded-xl font-medium transition-all duration-300 whitespace-nowrap flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-600/30 scale-105"
+                  : "text-gray-400 hover:bg-gray-700/50 hover:text-white"
               }`}
             >
-              {tab === "monitoring"
-                ? "📊 Monitoring"
-                : tab === "analytics"
-                ? "📈 Analytics"
-                : tab}
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -222,46 +311,130 @@ const AdminDashboard = () => {
         {/* Overview Tab */}
         {activeTab === "overview" && (
           <div>
+            {/* Welcome Banner */}
+            <div className="relative overflow-hidden rounded-2xl p-6 mb-8 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
+              <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white opacity-10 rounded-full animate-pulse"></div>
+                <div className="absolute bottom-0 left-1/4 w-32 h-32 bg-white opacity-5 rounded-full"></div>
+              </div>
+              <div className="relative z-10 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    Welcome back, {user?.name}! 👋
+                  </h2>
+                  <p className="text-blue-100 mt-1">
+                    Here's what's happening with your platform today.
+                  </p>
+                </div>
+                <div className="hidden md:flex items-center gap-4">
+                  <div className="text-center px-4 py-2 bg-white/10 rounded-xl backdrop-blur-sm">
+                    <p className="text-2xl font-bold">
+                      <AnimatedCounter end={stats?.users?.online || 0} />
+                    </p>
+                    <p className="text-xs text-blue-200">Online Now</p>
+                  </div>
+                  <div className="text-center px-4 py-2 bg-white/10 rounded-xl backdrop-blur-sm">
+                    <p className="text-2xl font-bold">
+                      <AnimatedCounter end={stats?.feedback?.total || 0} />
+                    </p>
+                    <p className="text-xs text-blue-200">Total Feedback</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Quick Action Cards */}
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
+            <div className="grid md:grid-cols-5 gap-4 mb-8">
               <button
                 onClick={() => setActiveTab("analytics")}
-                className="bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg p-4 hover:scale-105 transition transform text-left"
+                className="group relative overflow-hidden bg-gradient-to-br from-purple-600 to-purple-800 rounded-2xl p-5 hover:scale-105 transition-all duration-300 text-left shadow-lg shadow-purple-600/20"
               >
-                <span className="text-2xl">📊</span>
-                <h4 className="font-semibold mt-2">Analytics Dashboard</h4>
-                <p className="text-purple-200 text-xs mt-1">
-                  View charts & trends
-                </p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="text-2xl">📊</span>
+                  </div>
+                  <h4 className="font-bold text-lg">Analytics</h4>
+                  <p className="text-purple-200 text-xs mt-1">
+                    View charts & trends
+                  </p>
+                </div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                  <span className="text-xs">→</span>
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab("monitoring")}
-                className="bg-gradient-to-br from-green-600 to-green-800 rounded-lg p-4 hover:scale-105 transition transform text-left"
+                className="group relative overflow-hidden bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-5 hover:scale-105 transition-all duration-300 text-left shadow-lg shadow-green-600/20"
               >
-                <span className="text-2xl">📈</span>
-                <h4 className="font-semibold mt-2">Monitoring</h4>
-                <p className="text-green-200 text-xs mt-1">
-                  Prometheus & Grafana
-                </p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="text-2xl">📈</span>
+                  </div>
+                  <h4 className="font-bold text-lg">Monitoring</h4>
+                  <p className="text-green-200 text-xs mt-1">
+                    Prometheus & Grafana
+                  </p>
+                </div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                  <span className="text-xs">→</span>
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab("users")}
-                className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg p-4 hover:scale-105 transition transform text-left"
+                className="group relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-5 hover:scale-105 transition-all duration-300 text-left shadow-lg shadow-blue-600/20"
               >
-                <span className="text-2xl">👥</span>
-                <h4 className="font-semibold mt-2">Manage Users</h4>
-                <p className="text-blue-200 text-xs mt-1">View & edit users</p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="text-2xl">👥</span>
+                  </div>
+                  <h4 className="font-bold text-lg">Manage Users</h4>
+                  <p className="text-blue-200 text-xs mt-1">
+                    View & edit users
+                  </p>
+                </div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                  <span className="text-xs">→</span>
+                </div>
               </button>
               <button
                 onClick={() => setActiveTab("feedback")}
-                className="bg-gradient-to-br from-orange-600 to-orange-800 rounded-lg p-4 hover:scale-105 transition transform text-left"
+                className="group relative overflow-hidden bg-gradient-to-br from-orange-600 to-orange-800 rounded-2xl p-5 hover:scale-105 transition-all duration-300 text-left shadow-lg shadow-orange-600/20"
               >
-                <span className="text-2xl">💬</span>
-                <h4 className="font-semibold mt-2">All Feedback</h4>
-                <p className="text-orange-200 text-xs mt-1">
-                  View all submissions
-                </p>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="text-2xl">💬</span>
+                  </div>
+                  <h4 className="font-bold text-lg">All Feedback</h4>
+                  <p className="text-orange-200 text-xs mt-1">
+                    View all submissions
+                  </p>
+                </div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                  <span className="text-xs">→</span>
+                </div>
               </button>
+              <Link
+                to="/admin/user-ratings"
+                className="group relative overflow-hidden bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-2xl p-5 hover:scale-105 transition-all duration-300 text-left shadow-lg shadow-yellow-600/20"
+              >
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <span className="text-2xl">⭐</span>
+                  </div>
+                  <h4 className="font-bold text-lg">User Ratings</h4>
+                  <p className="text-yellow-100 text-xs mt-1">
+                    View all ratings
+                  </p>
+                </div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 bg-white/20 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                  <span className="text-xs">→</span>
+                </div>
+              </Link>
             </div>
 
             {/* Stats Cards */}
@@ -338,43 +511,46 @@ const AdminDashboard = () => {
                   Feedback Sentiment
                 </h3>
                 <div className="space-y-3">
-                  {Object.entries(stats?.feedback?.breakdown || {}).map(
-                    ([sentiment, count]) => {
-                      const colors = {
-                        positive: "bg-green-500",
-                        neutral: "bg-gray-500",
-                        negative: "bg-red-500",
-                      };
-                      return (
-                        <div
-                          key={sentiment}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="capitalize text-gray-400">
-                            {sentiment}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-32 bg-gray-700 rounded-full h-2">
-                              <div
-                                className={`${
-                                  colors[sentiment] || "bg-blue-500"
-                                } h-2 rounded-full`}
-                                style={{
-                                  width: `${
-                                    (count / (stats?.feedback?.total || 1)) *
-                                    100
-                                  }%`,
-                                }}
-                              ></div>
-                            </div>
-                            <span className="text-white font-medium w-8">
-                              {count}
-                            </span>
+                  {["positive", "neutral", "negative"].map((sentiment) => {
+                    const count =
+                      stats?.feedback?.bySentiment?.[sentiment] || 0;
+                    const colors = {
+                      positive: "bg-green-500",
+                      neutral: "bg-gray-500",
+                      negative: "bg-red-500",
+                    };
+                    const icons = {
+                      positive: "😊",
+                      neutral: "😐",
+                      negative: "😞",
+                    };
+                    return (
+                      <div
+                        key={sentiment}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="capitalize text-gray-400 flex items-center gap-2">
+                          <span>{icons[sentiment]}</span>
+                          {sentiment}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-32 bg-gray-700 rounded-full h-2">
+                            <div
+                              className={`${colors[sentiment]} h-2 rounded-full transition-all duration-500`}
+                              style={{
+                                width: `${
+                                  (count / (stats?.feedback?.total || 1)) * 100
+                                }%`,
+                              }}
+                            ></div>
                           </div>
+                          <span className="text-white font-medium w-8">
+                            {count}
+                          </span>
                         </div>
-                      );
-                    }
-                  )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -773,17 +949,35 @@ const AdminDashboard = () => {
                       </td>
                       <td className="py-3">{u.email}</td>
                       <td className="py-3">
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            u.role === "admin"
-                              ? "bg-yellow-600"
-                              : u.role === "manager"
-                              ? "bg-purple-600"
-                              : "bg-gray-600"
-                          }`}
-                        >
-                          {u.role || "member"}
-                        </span>
+                        {u._id === user?._id ? (
+                          <span className="px-2 py-1 rounded text-xs bg-yellow-600">
+                            {u.role}
+                          </span>
+                        ) : (
+                          <select
+                            value={u.role || "member"}
+                            onChange={(e) =>
+                              handleRoleChange(u._id, e.target.value)
+                            }
+                            className={`px-2 py-1 rounded text-xs cursor-pointer border-0 outline-none ${
+                              u.role === "admin"
+                                ? "bg-yellow-600 text-white"
+                                : u.role === "manager"
+                                ? "bg-purple-600 text-white"
+                                : "bg-gray-600 text-white"
+                            }`}
+                          >
+                            <option value="member" className="bg-gray-800">
+                              Member
+                            </option>
+                            <option value="manager" className="bg-gray-800">
+                              Manager
+                            </option>
+                            <option value="admin" className="bg-gray-800">
+                              Admin
+                            </option>
+                          </select>
+                        )}
                       </td>
                       <td className="py-3">
                         <span
@@ -1415,7 +1609,9 @@ const AdminDashboard = () => {
                   />
                 </div>
                 <p className="text-gray-400 text-sm mt-4">
-                  💡 Tip: If the dashboard shows no data, make sure your backend is running and sending metrics to Prometheus. The dashboard refreshes every 5 seconds.
+                  💡 Tip: If the dashboard shows no data, make sure your backend
+                  is running and sending metrics to Prometheus. The dashboard
+                  refreshes every 5 seconds.
                 </p>
               </div>
             )}
@@ -1794,7 +1990,8 @@ const AdminDashboard = () => {
                           style={{
                             width: `${
                               stats?.feedback?.total
-                                ? ((stats?.feedback?.bySentiment?.positive || 0) /
+                                ? ((stats?.feedback?.bySentiment?.positive ||
+                                    0) /
                                     stats.feedback.total) *
                                   100
                                 : 33
@@ -1824,7 +2021,8 @@ const AdminDashboard = () => {
                           style={{
                             width: `${
                               stats?.feedback?.total
-                                ? ((stats?.feedback?.bySentiment?.neutral || 0) /
+                                ? ((stats?.feedback?.bySentiment?.neutral ||
+                                    0) /
                                     stats.feedback.total) *
                                   100
                                 : 33
@@ -1854,7 +2052,8 @@ const AdminDashboard = () => {
                           style={{
                             width: `${
                               stats?.feedback?.total
-                                ? ((stats?.feedback?.bySentiment?.negative || 0) /
+                                ? ((stats?.feedback?.bySentiment?.negative ||
+                                    0) /
                                     stats.feedback.total) *
                                   100
                                 : 33
@@ -1878,19 +2077,25 @@ const AdminDashboard = () => {
                     <p className="text-4xl font-bold text-green-400">
                       {stats?.feedback?.bySentiment?.positive || 0}
                     </p>
-                    <p className="text-sm text-gray-400 mt-1">Positive Feedback</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Positive Feedback
+                    </p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-900/50 to-purple-800/30 border border-purple-700 rounded-lg p-4 text-center">
                     <p className="text-4xl font-bold text-purple-400">
                       {stats?.feedback?.bySentiment?.negative || 0}
                     </p>
-                    <p className="text-sm text-gray-400 mt-1">Negative Feedback</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Negative Feedback
+                    </p>
                   </div>
                   <div className="bg-gradient-to-br from-yellow-900/50 to-yellow-800/30 border border-yellow-700 rounded-lg p-4 text-center">
                     <p className="text-4xl font-bold text-yellow-400">
                       {stats?.feedback?.bySentiment?.neutral || 0}
                     </p>
-                    <p className="text-sm text-gray-400 mt-1">Neutral Feedback</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Neutral Feedback
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1958,19 +2163,41 @@ const AdminDashboard = () => {
 
 const StatCard = ({ title, value, icon, color }) => {
   const colors = {
-    blue: "bg-blue-600/20 border-blue-600",
-    green: "bg-green-600/20 border-green-600",
-    purple: "bg-purple-600/20 border-purple-600",
-    yellow: "bg-yellow-600/20 border-yellow-600",
+    blue: "border-blue-500/30 bg-gradient-to-br from-blue-900/40 to-blue-800/20",
+    green:
+      "border-green-500/30 bg-gradient-to-br from-green-900/40 to-green-800/20",
+    purple:
+      "border-purple-500/30 bg-gradient-to-br from-purple-900/40 to-purple-800/20",
+    yellow:
+      "border-yellow-500/30 bg-gradient-to-br from-yellow-900/40 to-yellow-800/20",
+    red: "border-red-500/30 bg-gradient-to-br from-red-900/40 to-red-800/20",
+  };
+
+  const iconBg = {
+    blue: "from-blue-500 to-blue-600",
+    green: "from-green-500 to-green-600",
+    purple: "from-purple-500 to-purple-600",
+    yellow: "from-yellow-500 to-yellow-600",
+    red: "from-red-500 to-red-600",
   };
 
   return (
-    <div className={`${colors[color]} border rounded-lg p-6`}>
-      <div className="flex items-center justify-between">
-        <span className="text-3xl">{icon}</span>
+    <div
+      className={`${colors[color]} border rounded-2xl p-6 hover:scale-105 transition-all duration-300 cursor-pointer group`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div
+          className={`w-12 h-12 bg-gradient-to-br ${iconBg[color]} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}
+        >
+          <span className="text-2xl">{icon}</span>
+        </div>
       </div>
-      <h3 className="text-3xl font-bold mt-3">{value}</h3>
-      <p className="text-gray-400 text-sm">{title}</p>
+      <h3 className="text-4xl font-bold">
+        <AnimatedCounter
+          end={typeof value === "number" ? value : parseInt(value) || 0}
+        />
+      </h3>
+      <p className="text-gray-400 text-sm mt-1">{title}</p>
     </div>
   );
 };
@@ -1984,7 +2211,7 @@ const HealthCard = ({ title, status }) => {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-gray-600 transition-all">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">{title}</h3>
         <span

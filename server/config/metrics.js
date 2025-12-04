@@ -80,6 +80,33 @@ export const feedbackBySentiment = new Counter({
   registers: [register],
 });
 
+// User rating metrics
+export const userRatingsTotal = new Counter({
+  name: "user_ratings_total",
+  help: "Total number of user ratings submitted",
+  registers: [register],
+});
+
+export const userRatingsByScore = new Counter({
+  name: "user_ratings_by_score_total",
+  help: "User ratings count by score (1-5)",
+  labelNames: ["score"],
+  registers: [register],
+});
+
+export const userRatingsAverage = new Gauge({
+  name: "user_ratings_average",
+  help: "Average user rating score",
+  registers: [register],
+});
+
+export const userRatingsGauge = new Gauge({
+  name: "user_ratings_gauge",
+  help: "User ratings count by score (gauge)",
+  labelNames: ["score"],
+  registers: [register],
+});
+
 // Update user metrics periodically
 export const updateUserMetrics = async () => {
   try {
@@ -120,6 +147,37 @@ export const updateFeedbackMetrics = async (db) => {
         feedbackSentiment.set({ sentiment: s._id.toLowerCase() }, s.count);
       }
     });
+
+    // Update rating metrics
+    const ratingsData = await db
+      .collection("feedback_results")
+      .aggregate([
+        { $match: { rating: { $gt: 0 } } },
+        { $group: { _id: "$rating", count: { $sum: 1 } } },
+      ])
+      .toArray();
+
+    // Reset all rating gauges first
+    for (let i = 1; i <= 5; i++) {
+      userRatingsGauge.set({ score: String(i) }, 0);
+    }
+
+    let totalRatings = 0;
+    let sumRatings = 0;
+    ratingsData.forEach((r) => {
+      if (r._id >= 1 && r._id <= 5) {
+        userRatingsGauge.set({ score: String(r._id) }, r.count);
+        totalRatings += r.count;
+        sumRatings += r._id * r.count;
+      }
+    });
+
+    // Update average rating
+    if (totalRatings > 0) {
+      userRatingsAverage.set(sumRatings / totalRatings);
+    } else {
+      userRatingsAverage.set(0);
+    }
   } catch (err) {
     console.error("Error updating feedback metrics:", err.message);
   }

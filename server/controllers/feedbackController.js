@@ -236,6 +236,7 @@ export const submitFeedback = async (req, res) => {
   try {
     const { text, metadata = {} } = req.body;
     const userId = req.userId;
+    const rating = metadata.rating || 0;
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
       return res.status(400).json({
@@ -248,6 +249,14 @@ export const submitFeedback = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Feedback text exceeds maximum length of 5000 characters",
+      });
+    }
+
+    // Validate rating if provided
+    if (rating && (rating < 1 || rating > 5)) {
+      return res.status(400).json({
+        success: false,
+        message: "Rating must be between 1 and 5",
       });
     }
 
@@ -269,7 +278,9 @@ export const submitFeedback = async (req, res) => {
       usedAI = analysisResult !== null && analysisResult.aiProcessed;
     } catch (aiError) {
       // AI failed or timed out, use fallback
-      console.warn(`⚠️ AI analysis not available (${aiError.message}), using fallback`);
+      console.warn(
+        `⚠️ AI analysis not available (${aiError.message}), using fallback`
+      );
     }
 
     // If AI didn't work, use fallback analysis
@@ -308,6 +319,7 @@ export const submitFeedback = async (req, res) => {
       jobId,
       userId,
       text: trimmedText,
+      rating: rating || 0,
       sentiment: analysisResult.sentiment,
       confidence: analysisResult.confidence,
       allScores: analysisResult.allScores,
@@ -318,17 +330,17 @@ export const submitFeedback = async (req, res) => {
       processedAt: new Date(),
       metadata: {
         ...metadata,
-        source: analysisResult.aiProcessed ? "ai-analysis" : "fallback-analysis",
+        source: analysisResult.aiProcessed
+          ? "ai-analysis"
+          : "fallback-analysis",
         wordCount: trimmedText.split(/\s+/).length,
         charCount: trimmedText.length,
       },
     };
 
-    await db.collection("feedback_results").updateOne(
-      { jobId },
-      { $set: feedbackDoc },
-      { upsert: true }
-    );
+    await db
+      .collection("feedback_results")
+      .updateOne({ jobId }, { $set: feedbackDoc }, { upsert: true });
 
     // Return complete analysis immediately
     res.status(200).json({
@@ -351,9 +363,10 @@ export const submitFeedback = async (req, res) => {
     });
 
     console.log(
-      `✅ Feedback ${jobId} analyzed with ${analysisResult.aiProcessed ? "AI" : "fallback"} method`
+      `✅ Feedback ${jobId} analyzed with ${
+        analysisResult.aiProcessed ? "AI" : "fallback"
+      } method`
     );
-
   } catch (error) {
     console.error("Submit feedback error:", error);
     res.status(500).json({
@@ -519,13 +532,13 @@ function getSimpleSentimentScores(text) {
     // Scale scores based on detected words
     // More words detected = higher confidence in that sentiment
     const maxCount = Math.max(positiveCount, negativeCount, 1);
-    
-    positiveScore = positiveCount / maxCount * 0.8; // Max 80% confidence
-    negativeScore = negativeCount / maxCount * 0.8; // Max 80% confidence
-    
+
+    positiveScore = (positiveCount / maxCount) * 0.8; // Max 80% confidence
+    negativeScore = (negativeCount / maxCount) * 0.8; // Max 80% confidence
+
     // Neutral gets the remaining percentage (min 10%)
     neutralScore = Math.max(0.1, 1 - positiveScore - negativeScore);
-    
+
     // Renormalize to ensure they sum to 1.0
     const total = positiveScore + negativeScore + neutralScore;
     positiveScore = positiveScore / total;
@@ -568,7 +581,9 @@ export const getFeedbackResult = async (req, res) => {
         if (state === "completed") {
           // Job completed, get result from MongoDB
           const db = await getMongoDb();
-          const result = await db.collection("feedback_results").findOne({ jobId });
+          const result = await db
+            .collection("feedback_results")
+            .findOne({ jobId });
 
           if (result) {
             return res.json({
@@ -716,7 +731,9 @@ export const getFeedbackStats = async (req, res) => {
       ])
       .toArray();
 
-    const total = await db.collection("feedback_results").countDocuments({ userId });
+    const total = await db
+      .collection("feedback_results")
+      .countDocuments({ userId });
 
     const sentimentBreakdown = {};
     stats.forEach((s) => {
@@ -739,6 +756,65 @@ export const getFeedbackStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get feedback statistics",
+    });
+  }
+};
+
+/**
+ * Get rating statistics for authenticated user
+ * GET /api/feedback/rating-stats
+ */
+export const getRatingStats = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const db = await getMongoDb();
+
+    // Get all feedback with ratings for this user
+    const feedbackWithRatings = await db
+      .collection("feedback_results")
+      .find({ userId, rating: { $gt: 0 } })
+      .toArray();
+
+    if (feedbackWithRatings.length === 0) {
+      return res.json({
+        success: true,
+        stats: {
+          totalRatings: 0,
+          averageRating: 0,
+          distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        },
+      });
+    }
+
+    // Calculate statistics
+    const totalRatings = feedbackWithRatings.length;
+    const sumRatings = feedbackWithRatings.reduce(
+      (sum, fb) => sum + fb.rating,
+      0
+    );
+    const averageRating = sumRatings / totalRatings;
+
+    // Calculate distribution
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    feedbackWithRatings.forEach((fb) => {
+      if (fb.rating >= 1 && fb.rating <= 5) {
+        distribution[fb.rating]++;
+      }
+    });
+
+    res.json({
+      success: true,
+      stats: {
+        totalRatings,
+        averageRating,
+        distribution,
+      },
+    });
+  } catch (error) {
+    console.error("Get rating stats error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get rating statistics",
     });
   }
 };

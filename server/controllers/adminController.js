@@ -322,6 +322,41 @@ export const deleteUser = async (req, res) => {
 };
 
 /**
+ * Update user role (admin only)
+ * PUT /api/admin/users/:userId/role
+ */
+export const updateUserRoleAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+    const adminId = req.userId;
+
+    if (userId === adminId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Cannot change your own role" });
+    }
+
+    if (!["admin", "manager", "member"].includes(role)) {
+      return res.status(400).json({ success: false, message: "Invalid role" });
+    }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    await userModel.findByIdAndUpdate(userId, { role });
+
+    res.json({ success: true, message: "Role updated successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
  * Get system health status
  * GET /api/admin/health
  */
@@ -441,5 +476,90 @@ export const controlDockerMonitoring = async (req, res) => {
       message: `Failed to ${action} monitoring services`,
       error: error.message,
     });
+  }
+};
+
+/**
+ * Get all user ratings (admin only)
+ * GET /api/admin/user-ratings
+ */
+export const getUserRatings = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get users with ratings
+    const usersWithRatings = await userModel
+      .find({ "platformRating.rating": { $exists: true, $ne: null } })
+      .select("name email role isAccountVerified platformRating createdAt")
+      .sort({ "platformRating.updatedAt": -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const totalRatings = await userModel.countDocuments({
+      "platformRating.rating": { $exists: true, $ne: null },
+    });
+
+    // Calculate stats
+    const ratingStats = await userModel.aggregate([
+      { $match: { "platformRating.rating": { $exists: true, $ne: null } } },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: "$platformRating.rating" },
+          totalRatings: { $sum: 1 },
+          rating5: {
+            $sum: { $cond: [{ $eq: ["$platformRating.rating", 5] }, 1, 0] },
+          },
+          rating4: {
+            $sum: { $cond: [{ $eq: ["$platformRating.rating", 4] }, 1, 0] },
+          },
+          rating3: {
+            $sum: { $cond: [{ $eq: ["$platformRating.rating", 3] }, 1, 0] },
+          },
+          rating2: {
+            $sum: { $cond: [{ $eq: ["$platformRating.rating", 2] }, 1, 0] },
+          },
+          rating1: {
+            $sum: { $cond: [{ $eq: ["$platformRating.rating", 1] }, 1, 0] },
+          },
+        },
+      },
+    ]);
+
+    const stats = ratingStats[0] || {
+      averageRating: 0,
+      totalRatings: 0,
+      rating5: 0,
+      rating4: 0,
+      rating3: 0,
+      rating2: 0,
+      rating1: 0,
+    };
+
+    res.json({
+      success: true,
+      ratings: usersWithRatings,
+      stats: {
+        averageRating: stats.averageRating?.toFixed(1) || "0.0",
+        totalRatings: stats.totalRatings,
+        distribution: {
+          5: stats.rating5,
+          4: stats.rating4,
+          3: stats.rating3,
+          2: stats.rating2,
+          1: stats.rating1,
+        },
+      },
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalRatings,
+        pages: Math.ceil(totalRatings / parseInt(limit)),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

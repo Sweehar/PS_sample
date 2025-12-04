@@ -260,3 +260,72 @@ export const heartbeat = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * Submit or update user rating
+ * POST /api/user/rating
+ */
+export const submitRating = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { rating, message } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: "Rating must be between 1 and 5",
+      });
+    }
+
+    const user = await userModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Update user's rating
+    user.platformRating = {
+      rating: rating,
+      message: message?.trim() || "",
+      createdAt: user.platformRating?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Rating submitted successfully",
+      rating: user.platformRating,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Get user's own rating
+ * GET /api/user/rating
+ */
+export const getMyRating = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user = await userModel.findById(userId).select("platformRating");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      rating: user.platformRating || null,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

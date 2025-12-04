@@ -23,6 +23,12 @@ const userSchema = new mongoose.Schema(
       weeklyDigest: { type: Boolean, default: false },
       marketingEmails: { type: Boolean, default: false },
     },
+    platformRating: {
+      rating: { type: Number, min: 1, max: 5 },
+      message: { type: String, default: "" },
+      createdAt: { type: Date },
+      updatedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

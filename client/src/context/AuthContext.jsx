@@ -7,11 +7,24 @@ const AuthContext = createContext();
 // Heartbeat interval (every 30 seconds)
 const HEARTBEAT_INTERVAL = 30000;
 
+// Session key for tracking active session
+const SESSION_KEY = "crm_active_session";
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const heartbeatRef = useRef(null);
+
+  // Clear all auth data helper
+  const clearAuthData = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    Cookie.remove("token");
+    Cookie.remove("userId");
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.clear();
+  };
 
   // Heartbeat to keep user marked as online
   useEffect(() => {
@@ -32,19 +45,42 @@ export const AuthProvider = ({ children }) => {
     };
   }, [isAuthenticated]);
 
+  // Handle browser/tab close - logout user
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Mark session as closing
+      sessionStorage.setItem("session_closing", "true");
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
   // Check auth on mount
   useEffect(() => {
     const checkAuth = async () => {
       // Check if user wants to force logout via query parameter
       const params = new URLSearchParams(window.location.search);
       if (params.get("logout") === "true") {
-        setIsAuthenticated(false);
-        setUser(null);
-        Cookie.remove("token");
-        Cookie.remove("userId");
-        localStorage.clear();
+        clearAuthData();
         // Remove the logout query param from URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Check if this is a new browser session (no active session marker)
+      const hasActiveSession = sessionStorage.getItem(SESSION_KEY);
+      if (!hasActiveSession) {
+        // This is a new browser session - clear any old auth data
+        clearAuthData();
         setLoading(false);
         return;
       }
@@ -53,7 +89,7 @@ export const AuthProvider = ({ children }) => {
         // Fetch auth and user data in parallel for faster page load
         const userId = Cookie.get("userId");
         const requests = [authAPI.isAuthenticated()];
-        
+
         // Add user data request if userId is available
         if (userId) {
           requests.push(userAPI.getUserData(userId));
@@ -72,17 +108,11 @@ export const AuthProvider = ({ children }) => {
           }
         } else {
           // Auth check failed - ensure user is logged out
-          setIsAuthenticated(false);
-          setUser(null);
-          Cookie.remove("token");
-          Cookie.remove("userId");
+          clearAuthData();
         }
       } catch (error) {
         // Error during auth check - ensure user is logged out
-        setIsAuthenticated(false);
-        setUser(null);
-        Cookie.remove("token");
-        Cookie.remove("userId");
+        clearAuthData();
       } finally {
         setLoading(false);
       }
@@ -96,6 +126,8 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login({ email, password });
       if (response.data.success) {
         setIsAuthenticated(true);
+        // Set session marker to track active session
+        sessionStorage.setItem(SESSION_KEY, "true");
         // Store userId and fetch user data
         if (response.data.userId) {
           Cookie.set("userId", response.data.userId, { expires: 7 });
@@ -124,6 +156,8 @@ export const AuthProvider = ({ children }) => {
       if (response.data.success) {
         // User is logged in after registration (token cookie is set by backend)
         setIsAuthenticated(true);
+        // Set session marker to track active session
+        sessionStorage.setItem(SESSION_KEY, "true");
         if (response.data.userId) {
           Cookie.set("userId", response.data.userId, { expires: 7 });
         }
@@ -142,12 +176,7 @@ export const AuthProvider = ({ children }) => {
       console.error("Logout error:", error);
     } finally {
       // Always clear state and cookies, even if API call fails
-      setUser(null);
-      setIsAuthenticated(false);
-      Cookie.remove("token");
-      Cookie.remove("userId");
-      // Also clear localStorage if being used anywhere
-      localStorage.clear();
+      clearAuthData();
     }
   };
 

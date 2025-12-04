@@ -20,6 +20,7 @@ import Feedback from "./pages/Feedback";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
+import UserRatings from "./pages/UserRatings";
 
 // Styles
 import "./styles/globals.css";
@@ -55,6 +56,14 @@ function App() {
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route
+            path="/admin/user-ratings"
+            element={
+              <AdminRoute>
+                <UserRatings />
+              </AdminRoute>
+            }
+          />
 
           {/* Protected Routes */}
           <Route

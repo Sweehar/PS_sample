@@ -5,6 +5,7 @@ import {
   getFeedbackResult,
   getFeedbackHistory,
   getFeedbackStats,
+  getRatingStats,
   getQueueHealth,
   clearFeedbackHistory,
 } from "../controllers/feedbackController.js";
@@ -30,6 +31,10 @@ feedbackRouter.get("/history", getFeedbackHistory);
 // Get user's sentiment statistics
 // GET /api/feedback/stats
 feedbackRouter.get("/stats", getFeedbackStats);
+
+// Get user's rating statistics
+// GET /api/feedback/rating-stats
+feedbackRouter.get("/rating-stats", getRatingStats);
 
 // Clear user's feedback history
 // DELETE /api/feedback/clear
