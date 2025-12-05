@@ -36,6 +36,12 @@ services:
       - GF_SERVER_ROOT_URL=http://localhost:3001
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      # Allow embedding in iframes
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SECURITY_COOKIE_SAMESITE=disabled
+      - GF_SECURITY_COOKIE_SECURE=false
+      # CORS settings
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
     restart: unless-stopped
     depends_on:
       - prometheus
