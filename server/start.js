@@ -1,15 +1,19 @@
 /**
  * Unified Startup Script
- * Starts both the main server and feedback worker together
- * Handles: Express Server, MongoDB, Redis, AI Client
+ * Starts all services: Server, Worker, Docker, Prometheus, Grafana
+ * Handles: Express Server, MongoDB, Redis, AI Client, Docker Monitoring
  */
 
 import { spawn } from "child_process";
+import { exec } from "child_process";
+import { promisify } from "util";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.join(__dirname, "..");
+const execAsync = promisify(exec);
 
 console.log("\n🚀 CRM Sentiment Analysis - Starting All Services\n");
 console.log("=".repeat(50));
@@ -104,38 +108,108 @@ function shutdown() {
     console.log(`   Stopping ${name}...`);
     proc.kill("SIGTERM");
   });
-  setTimeout(() => {
-    process.exit(0);
-  }, 2000);
+
+  // Stop Docker services
+  console.log("   Stopping Docker services...");
+  const monitoringPath = path.resolve(rootDir, "monitoring");
+  const isWindows = os.platform() === "win32";
+  const dockerCommand = isWindows
+    ? `docker-compose -f "${monitoringPath}/docker-compose.yml" stop prometheus grafana`
+    : `docker-compose -f ${monitoringPath}/docker-compose.yml stop prometheus grafana`;
+
+  exec(dockerCommand, (error) => {
+    if (!error) {
+      console.log("   ✓ Docker services stopped");
+    }
+    setTimeout(() => {
+      process.exit(0);
+    }, 2000);
+  });
 }
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-// Start Main Server
-const serverProc = startProcess(
-  "SERVER",
-  "node",
-  ["server.js"],
-  path.join(rootDir, "server"),
-  colors.server
-);
+// Start Docker and monitoring services first (if Windows)
+async function startDockerServices() {
+  const isWindows = os.platform() === "win32";
+  if (!isWindows) {
+    console.log("✓ Skipping Docker startup (running on non-Windows OS)");
+    return;
+  }
 
-// Wait a bit then start Worker (so server connects first)
-setTimeout(() => {
-  const workerProc = startProcess(
-    "WORKER",
+  try {
+    console.log("\n🐳 Checking Docker status...");
+    await execAsync("docker ps > nul 2>&1", { shell: "powershell.exe" });
+    console.log("✓ Docker is running");
+  } catch (err) {
+    console.log(
+      "🐳 Docker not running, starting Docker Desktop (this may take 15-20 seconds)..."
+    );
+    try {
+      await execAsync(
+        'Start-Process "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe" -WindowStyle Hidden',
+        { shell: "powershell.exe" }
+      );
+      console.log("⏳ Waiting for Docker to initialize...");
+      await new Promise((resolve) => setTimeout(resolve, 15000));
+      console.log("✓ Docker Desktop started");
+    } catch (dockerStartErr) {
+      console.warn(
+        "⚠️  Could not auto-start Docker Desktop. Please start it manually if you want monitoring services."
+      );
+      return;
+    }
+  }
+
+  // Start monitoring services
+  console.log("📊 Starting Prometheus and Grafana...");
+  try {
+    const monitoringPath = path.resolve(rootDir, "monitoring");
+    const command = `docker-compose -f "${monitoringPath}/docker-compose.yml" up -d prometheus grafana`;
+    await execAsync(command);
+    console.log("✓ Prometheus (http://localhost:9090) and Grafana (http://localhost:3001) started");
+  } catch (err) {
+    console.warn("⚠️  Could not start monitoring services:", err.message);
+  }
+}
+
+// Start services
+async function initializeServices() {
+  await startDockerServices();
+
+  // Start Main Server
+  const serverProc = startProcess(
+    "SERVER",
     "node",
-    ["worker.js"],
-    path.join(rootDir, "feedback-pipeline"),
-    colors.worker
+    ["server.js"],
+    path.join(rootDir, "server"),
+    colors.server
   );
-}, 2000);
 
-console.log("\n" + "=".repeat(50));
-console.log(`${colors.success}✅ Services starting...${colors.reset}`);
-console.log(`   📡 Server: http://localhost:4000`);
-console.log(`   📊 Metrics: http://localhost:4000/metrics`);
-console.log(`   🔧 Worker Metrics: http://localhost:3006/metrics`);
-console.log("\n   Press Ctrl+C to stop all services\n");
-console.log("=".repeat(50) + "\n");
+  // Wait a bit then start Worker (so server connects first)
+  setTimeout(() => {
+    const workerProc = startProcess(
+      "WORKER",
+      "node",
+      ["worker.js"],
+      path.join(rootDir, "feedback-pipeline"),
+      colors.worker
+    );
+  }, 2000);
+
+  console.log("\n" + "=".repeat(50));
+  console.log(`${colors.success}✅ All services started!${colors.reset}`);
+  console.log(`   🖥️  Server: http://localhost:5000`);
+  console.log(`   📊 Prometheus: http://localhost:9090`);
+  console.log(`   📈 Grafana: http://localhost:3001`);
+  console.log(`   📡 Metrics: http://localhost:5000/metrics`);
+  console.log(`   🔧 Worker Metrics: http://localhost:3006/metrics`);
+  console.log("\n   Press Ctrl+C to stop all services\n");
+  console.log("=".repeat(50) + "\n");
+}
+
+initializeServices().catch((error) => {
+  console.error("Failed to initialize services:", error);
+  process.exit(1);
+});

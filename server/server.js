@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 import authRoutes from "./routes/authRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 import feedbackRouter from "./routes/feedbackRoutes.js";
@@ -21,7 +22,12 @@ dotenv.config({ path: path.join(__dirname, "../.env") });
 const app = express();
 const port = process.env.PORT || 4000;
 
-app.use(express.static(path.join(__dirname, "frontend/build")));
+// Serve static files from frontend/build if it exists (production)
+// In development, frontend runs separately on port 3000
+const buildPath = path.join(__dirname, "frontend/build");
+if (fs.existsSync(buildPath)) {
+  app.use(express.static(buildPath));
+}
 
 // --- FLEXIBLE CORS CONFIGURATION ---
 const allowedOrigins = [

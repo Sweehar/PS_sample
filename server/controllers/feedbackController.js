@@ -717,6 +717,7 @@ export const getFeedbackStats = async (req, res) => {
 
     const db = await getMongoDb();
 
+    // Get stats for all time
     const stats = await db
       .collection("feedback_results")
       .aggregate([
@@ -735,20 +736,103 @@ export const getFeedbackStats = async (req, res) => {
       .collection("feedback_results")
       .countDocuments({ userId });
 
+    // Calculate growth metrics (this week vs last week)
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    // Count this week's feedback
+    const thisWeekTotal = await db
+      .collection("feedback_results")
+      .countDocuments({
+        userId,
+        processedAt: { $gte: sevenDaysAgo },
+      });
+
+    // Count last week's feedback
+    const lastWeekTotal = await db
+      .collection("feedback_results")
+      .countDocuments({
+        userId,
+        processedAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo },
+      });
+
+    // Get this week's sentiment breakdown
+    const thisWeekStats = await db
+      .collection("feedback_results")
+      .aggregate([
+        { $match: { userId, processedAt: { $gte: sevenDaysAgo } } },
+        {
+          $group: {
+            _id: "$sentiment",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    // Get last week's sentiment breakdown
+    const lastWeekStats = await db
+      .collection("feedback_results")
+      .aggregate([
+        {
+          $match: {
+            userId,
+            processedAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo },
+          },
+        },
+        {
+          $group: {
+            _id: "$sentiment",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    // Create maps for easy lookup
+    const thisWeekMap = {};
+    const lastWeekMap = {};
+    thisWeekStats.forEach((s) => {
+      thisWeekMap[s._id] = s.count;
+    });
+    lastWeekStats.forEach((s) => {
+      lastWeekMap[s._id] = s.count;
+    });
+
+    // Calculate growth percentages for each sentiment
+    const calculateGrowth = (thisWeek, lastWeek) => {
+      if (lastWeek === 0) {
+        return thisWeek > 0 ? 100 : 0; // 100% growth if last week was 0
+      }
+      return (((thisWeek - lastWeek) / lastWeek) * 100).toFixed(1);
+    };
+
     const sentimentBreakdown = {};
     stats.forEach((s) => {
+      const thisWeekCount = thisWeekMap[s._id] || 0;
+      const lastWeekCount = lastWeekMap[s._id] || 0;
       sentimentBreakdown[s._id] = {
         count: s.count,
         percentage: total > 0 ? ((s.count / total) * 100).toFixed(1) : 0,
         avgConfidence: s.avgConfidence?.toFixed(3) || 0,
+        weekGrowth: calculateGrowth(thisWeekCount, lastWeekCount),
       };
     });
+
+    // Calculate overall total growth
+    const totalGrowth = calculateGrowth(thisWeekTotal, lastWeekTotal);
 
     res.json({
       success: true,
       stats: {
         total,
         breakdown: sentimentBreakdown,
+        growth: {
+          total: totalGrowth,
+          thisWeek: thisWeekTotal,
+          lastWeek: lastWeekTotal,
+        },
       },
     });
   } catch (error) {

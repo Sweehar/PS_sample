@@ -46,8 +46,26 @@ export const getAdminStats = async (req, res) => {
       userModel.countDocuments({ isAccountVerified: true }),
       userModel.countDocuments({ isAccountVerified: false }),
       userModel.countDocuments({ isOnline: true }),
-      userModel.aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }]),
+      userModel.aggregate([
+        { 
+          $group: { 
+            _id: { $ifNull: ["$role", "member"] }, 
+            count: { $sum: 1 } 
+          } 
+        },
+        { $sort: { _id: 1 } }
+      ]),
     ]);
+
+    // Verify the counts add up correctly
+    const roleCountTotal = usersByRole.reduce((sum, item) => sum + item.count, 0);
+    console.log(`User count verification: Total=${totalUsers}, By Role Sum=${roleCountTotal}`, usersByRole);
+    
+    // Debug: Get individual user roles to find discrepancies
+    if (totalUsers !== roleCountTotal) {
+      const userRoles = await userModel.find({}).select('name email role').lean();
+      console.log('All user roles:', userRoles);
+    }
 
     // Get recent users
     const recentUsers = await userModel
@@ -63,6 +81,7 @@ export const getAdminStats = async (req, res) => {
       bySentiment: {},
       avgConfidence: 0,
       topIntents: [],
+      growth: {},
     };
     try {
       const db = await getMongoDb();
@@ -97,6 +116,33 @@ export const getAdminStats = async (req, res) => {
         ])
         .toArray();
 
+      // Calculate growth metrics (this week vs last week)
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+      // Count this week's feedback
+      const thisWeekTotal = await db
+        .collection("feedback_results")
+        .countDocuments({
+          processedAt: { $gte: sevenDaysAgo },
+        });
+
+      // Count last week's feedback
+      const lastWeekTotal = await db
+        .collection("feedback_results")
+        .countDocuments({
+          processedAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo },
+        });
+
+      // Calculate overall total growth
+      const calculateGrowth = (thisWeek, lastWeek) => {
+        if (lastWeek === 0) {
+          return thisWeek > 0 ? 100 : 0;
+        }
+        return (((thisWeek - lastWeek) / lastWeek) * 100).toFixed(1);
+      };
+
       feedbackStats = {
         total: totalFeedback,
         bySentiment: sentimentBreakdown.reduce((acc, item) => {
@@ -105,6 +151,11 @@ export const getAdminStats = async (req, res) => {
         }, {}),
         avgConfidence: avgConfidenceResult[0]?.avgConfidence || 0,
         topIntents,
+        growth: {
+          total: calculateGrowth(thisWeekTotal, lastWeekTotal),
+          thisWeek: thisWeekTotal,
+          lastWeek: lastWeekTotal,
+        },
       };
     } catch (err) {
       console.log("Feedback DB not available:", err.message);
@@ -134,9 +185,13 @@ export const getAdminStats = async (req, res) => {
           unverified: unverifiedUsers,
           online: onlineUsers,
           byRole: usersByRole.reduce((acc, item) => {
-            acc[item._id || "member"] = item.count;
+            acc[item._id] = item.count;
             return acc;
-          }, {}),
+          }, {
+            admin: 0,
+            manager: 0,
+            member: 0,
+          }),
         },
         feedback: feedbackStats,
         registrationTrend,
@@ -471,10 +526,40 @@ export const controlDockerMonitoring = async (req, res) => {
       output: stdout || stderr,
     });
   } catch (error) {
+    const errorMessage = error.message || "";
+    let userMessage = `Failed to ${action} monitoring services`;
+    let details = error.message;
+
+    // Provide helpful error messages for common issues
+    if (
+      errorMessage.includes("docker") ||
+      errorMessage.includes("Cannot find") ||
+      errorMessage.includes("not found")
+    ) {
+      userMessage = `Docker is not running or not found`;
+      details =
+        "Please start Docker Desktop before trying to control monitoring services. After starting Docker, try again.";
+    } else if (errorMessage.includes("ENOENT")) {
+      userMessage = `docker-compose not found`;
+      details =
+        "Please ensure Docker Desktop is installed with Docker Compose support.";
+    } else if (errorMessage.includes("connect")) {
+      userMessage = `Cannot connect to Docker daemon`;
+      details =
+        "Please start Docker Desktop and ensure it is running properly before trying to control monitoring services.";
+    } else if (errorMessage.includes("image")) {
+      userMessage = `Failed to pull Docker image`;
+      details =
+        "Check your internet connection and ensure Docker Desktop is running with internet access.";
+    }
+
+    console.error(`Docker ${action} error:`, error);
+
     res.status(500).json({
       success: false,
-      message: `Failed to ${action} monitoring services`,
-      error: error.message,
+      message: userMessage,
+      details: details,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
