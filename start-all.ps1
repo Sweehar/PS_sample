@@ -47,7 +47,7 @@ Write-Host ""
 Write-Host "[2/8] Checking Docker Desktop..." -ForegroundColor Yellow
 $dockerCheck = $false
 try {
-    $dockerInfo = docker info 2>&1
+    docker info 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Write-Host "  Docker is running" -ForegroundColor Green
         $dockerCheck = $true

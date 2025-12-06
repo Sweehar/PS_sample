@@ -62,13 +62,15 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       const errorData = err.response?.data;
-      let errorMessage = `❌ ${errorData?.message || `Failed to ${action} services`}`;
-      
+      let errorMessage = `❌ ${
+        errorData?.message || `Failed to ${action} services`
+      }`;
+
       // Add details if available
       if (errorData?.details) {
         errorMessage += `\n${errorData.details}`;
       }
-      
+
       setDockerMessage(errorMessage);
     } finally {
       setDockerLoading(false);
@@ -117,13 +119,23 @@ const AdminDashboard = () => {
 
   const fetchUsers = async (page = 1) => {
     try {
+      console.log("Fetching users - Page:", page, "Search:", searchTerm);
       const res = await adminAPI.getUsers(page, 10, searchTerm);
+      console.log("Users API response:", res.data);
       if (res.data.success) {
         setUsers(res.data.users);
         setUserPagination(res.data.pagination);
+        console.log(
+          "Users fetched successfully:",
+          res.data.users.length,
+          "users"
+        );
+      } else {
+        console.error("API returned success: false");
       }
     } catch (err) {
       console.error("Failed to fetch users:", err);
+      console.error("Error details:", err.response?.data || err.message);
     }
   };
 
@@ -181,8 +193,8 @@ const AdminDashboard = () => {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <div className="text-center">
-          <div className="relative">
+        <div className="flex flex-col items-center justify-center text-center">
+          <div className="relative flex items-center justify-center">
             <div className="w-20 h-20 border-4 border-gray-700 rounded-full"></div>
             <div className="absolute top-0 left-0 w-20 h-20 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
             <div
