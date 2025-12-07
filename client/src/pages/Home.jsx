@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { assets } from "../assets";
 import { publicAPI } from "../services/api";
+import AnimatedGauge from "../components/AnimatedGauge";
 
 // Static data - defined outside component to avoid recreation
 const testimonials = [
@@ -431,49 +432,45 @@ const Home = () => {
               </div>
             </div>
 
-            {/* Hero Image/Animation */}
+            {/* Hero Gauge Animation */}
             <div className="relative">
-              <div className="relative z-10">
-                <img
-                  src={assets.header_img}
-                  alt="AI Feedback Analysis Dashboard"
-                  className="w-full h-auto rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-500"
-                />
+              <div className="relative z-10 bg-white rounded-2xl shadow-2xl p-8">
+                <AnimatedGauge />
+              </div>
 
-                {/* Floating Cards */}
-                <div className="absolute -left-4 top-1/4 bg-white rounded-xl shadow-xl p-4 animate-float">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-xl">😊</span>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Sentiment</p>
-                      <p className="font-bold text-green-600">Positive 94%</p>
-                    </div>
+              {/* Floating Cards */}
+              <div className="absolute -left-4 top-1/4 bg-white rounded-xl shadow-xl p-4 animate-float">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-xl">😊</span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Sentiment</p>
+                    <p className="font-bold text-green-600">Positive 94%</p>
                   </div>
                 </div>
+              </div>
 
-                <div className="absolute -right-4 top-1/2 bg-white rounded-xl shadow-xl p-4 animate-float animation-delay-2000">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-xl">📈</span>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Insights</p>
-                      <p className="font-bold text-blue-600">+127 today</p>
-                    </div>
+              <div className="absolute -right-4 top-1/2 bg-white rounded-xl shadow-xl p-4 animate-float animation-delay-2000">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-xl">📈</span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Insights</p>
+                    <p className="font-bold text-blue-600">+127 today</p>
                   </div>
                 </div>
+              </div>
 
-                <div className="absolute -bottom-4 left-1/4 bg-white rounded-xl shadow-xl p-4 animate-float animation-delay-4000">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <span className="text-xl">🎯</span>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Accuracy</p>
-                      <p className="font-bold text-purple-600">99.2%</p>
-                    </div>
+              <div className="absolute -bottom-4 left-1/4 bg-white rounded-xl shadow-xl p-4 animate-float animation-delay-4000">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                    <span className="text-xl">🎯</span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Accuracy</p>
+                    <p className="font-bold text-purple-600">99.2%</p>
                   </div>
                 </div>
               </div>
