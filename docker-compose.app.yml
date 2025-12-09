@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  # React Frontend
+  client:
+    build: ./client
+    ports:
+      - "3000:80"
+    restart: always
+
+  # Express Backend
+  server:
+    build: ./server
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      # REPLACE WITH YOUR ACTUAL MONGO ATLAS CONNECTION STRING
+      - MONGO_URI=mongodb+srv://team808:1234PS4321@cluster0.0djdx0n.mongodb.net/mern-auth
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=local_development_secret
+      - CLIENT_URL=http://localhost:3000
+    depends_on:
+      - redis
+
+  # AI Worker
+  worker:
+    build: ./feedback-pipeline
+    environment:
+      # MUST MATCH SERVER MONGO URI
+      - MONGO_URI=mongodb+srv://team808:1234PS4321@cluster0.0djdx0n.mongodb.net/mern-auth
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # REPLACE WITH YOUR HUGGING FACE KEY
+      - AI_API_KEY=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 
+    depends_on:
+      - redis
+
+  # Local Redis for the queue
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
