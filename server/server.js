@@ -31,10 +31,16 @@ if (fs.existsSync(buildPath)) {
 }
 
 // --- FLEXIBLE CORS CONFIGURATION ---
+// const allowedOrigins = [
+//   process.env.CLIENT_URL || "http://localhost:3000",
+//   /^http:\/\/(localhost|127\.0\.0\.1):\d+$/,
+// ];
 const allowedOrigins = [
   process.env.CLIENT_URL || "http://localhost:3000",
+  "https://ps-team808.vercel.app",
   /^http:\/\/(localhost|127\.0\.0\.1):\d+$/,
 ];
+
 
 app.use(express.json());
 app.use(
