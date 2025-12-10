@@ -46,6 +46,7 @@ app.use(express.json());
 app.use(
   cors({
     origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
       const isAllowed = allowedOrigins.some((pattern) => {
         if (typeof pattern === "string") {
           return pattern === origin;
